@@ -1,0 +1,21 @@
+# CNIS PDF Parser - Requirements
+# Python 3.8+ required
+
+# Core PDF processing
+pdfplumber==0.10.3
+
+# Data manipulation
+pandas==2.1.0
+numpy==1.24.3
+
+# Image processing (for visual debugging)
+pillow==10.0.0
+
+# Excel export
+openpyxl==3.1.2
+
+# Optional: visualization
+matplotlib==3.7.2
+
+# Optional: enhanced table detection
+camelot-py[cv]==0.11.0

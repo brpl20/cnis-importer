@@ -1,0 +1,38 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Output files
+*.json
+!requirements*.json
+*.xlsx
+*.png
+!debug_output/*.png
+
+# Sensitive data
+sensitive/
+
+# Temporary files
+*.tmp
+*.log
+debug_output/
