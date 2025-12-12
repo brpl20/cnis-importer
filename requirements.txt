@@ -19,3 +19,7 @@ matplotlib==3.7.2
 
 # Optional: enhanced table detection
 camelot-py[cv]==0.11.0
+
+# API
+flask==3.0.0
+python-dateutil==2.8.2

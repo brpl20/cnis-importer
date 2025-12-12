@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Flask REST API wrapper for CNIS parser (api.py)
+- Three endpoints: /health, /parse, /parse/summary
+- API runs on port 8000 with multipart/form-data file upload
+- Test script for API endpoints (test_api.sh)
+- Extraction date parsing from "Extrato Previdenciário" header (Data_Extracao field)
+
 ### Added - Ruby Implementation
 - Implemented `cnis_parser.rb` - Ruby version for Rails integration
 - Added `Gemfile` with pdf-reader dependency

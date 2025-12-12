@@ -45,6 +45,7 @@ class CNISParserFinal:
             'Nome': r'Nome:\s*([A-ZÇÃÕÁÉÍÓÚÂÊÔÀ\s]+?)(?:Data de nascimento|$)',
             'Data_Nascimento': r'Data de nascimento:\s*(\d{2}/\d{2}/\d{4})',
             'Nome_Mae': r'Nome da mãe:\s*([A-ZÇÃÕÁÉÍÓÚÂÊÔÀ\s]+?)(?:\n|Relações)',
+            'Data_Extracao': r'Extrato Previdenciário\s+(\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}:\d{2})',
         }
         
         for field_name, pattern in patterns.items():
