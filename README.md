@@ -63,19 +63,19 @@ parser.export_to_json('output.json')
 ```json
 {
   "personal_info": {
-    "NIT": "121.59960.98-7",
-    "CPF": "643.534.279-20",
-    "Nome": "CELSO STIMER",
-    "Data_Nascimento": "13/01/1967",
-    "Nome_Mae": "DOLORES DE MORAES STIMER"
+    "NIT": ".",
+    "CPF": "..",
+    "Nome": "... .",
+    "Data_Nascimento": "../01/..",
+    "Nome_Mae": "..."
   },
   "employment_relationships": [
     {
       "sequence": 1,
       "Data": {
-        "NIT": "121.59960.98-7",
-        "Codigo_Empresa": "83.056.390/0001-49",
-        "Origem_Vinculo": "GUIMATRA S. A. INDUSTRIA E COMERCIO FALIDO",
+        "NIT": ".",
+        "Codigo_Empresa": ".",
+        "Origem_Vinculo": "...",
         "Matricula_Trabalhador": "",
         "Tipo_Filiado_Vinculo": "Empregado ou Agente Público",
         "Inicio": "07/01/1985",
