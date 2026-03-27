@@ -1,173 +1,159 @@
 # CNIS PDF Parser
 
-Extract employment relationships and remunerations from Brazilian INSS CNIS PDFs.
+Extrator de dados de CNIS (Cadastro Nacional de Informações Sociais) do INSS em formato PDF. Extrai relações previdenciárias, remunerações e dados pessoais para JSON estruturado.
 
-## Features
+Validado com **100% de acurácia** contra 39 CNIS usando o [Tramitação Inteligente](https://planilha.tramitacaointeligente.com.br) como referência.
 
-- ✅ Extracts personal information (NIT, CPF, Nome, Data de Nascimento, Nome da Mãe)
-- ✅ Parses all employment relationship types:
-  - Regular Employment (Empregado ou Agente Público)
-  - Contribuinte Individual
-  - Facultativo
-- ✅ Extracts remunerations with proper left-to-right parsing
-- ✅ Handles multi-page sequences
-- ✅ Validates data with metadata (NIT match, date completeness, etc.)
-- ✅ Exports to JSON format
-
-## Installation
+## Instalação
 
 ```bash
-# Create virtual environment
 python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
+source venv/bin/activate
 pip install -r requirements_simple.txt
 ```
 
-## Usage
+## Uso
 
-### Command Line
+### Linha de comando
 
 ```bash
-python3 cnis_parser_final.py <input.pdf> [output.json]
-
-# Example
-python3 cnis_parser_final.py CNIS1.pdf extracted_data.json
+python3 cnis_parser_final.py <cnis.pdf> [output.json]
 ```
 
-### Python Code
+### Python
 
 ```python
 from cnis_parser_final import CNISParserFinal
 
-# Parse PDF
-parser = CNISParserFinal(pdf_path='CNIS1.pdf', debug=True)
+parser = CNISParserFinal(pdf_path='CNIS.pdf', debug=True)
 results = parser.parse()
 
-# Access data
+# Dados pessoais
 print(results['personal_info']['Nome'])
-print(results['personal_info']['NIT'])
+print(results['personal_info']['CPF'])
+print(results['personal_info']['Data_Nascimento'])
 
-# Iterate employment relationships
+# Vínculos empregatícios
 for emp in results['employment_relationships']:
-    print(f"Seq {emp['sequence']}: {emp['Data']['Origem_Vinculo']}")
-    print(f"  Remunerations: {len(emp['Remuneracoes'])}")
-    
-# Export to JSON
-parser.export_to_json('output.json')
+    d = emp['Data']
+    print(f"Seq {emp['sequence']}: {d['Origem_Vinculo']}")
+    print(f"  Tipo: {d['Tipo_Filiado_Vinculo']}")
+    print(f"  Período: {d['Inicio']} a {d['Fim']}")
+    print(f"  Remunerações: {len(emp['Remuneracoes'])}")
+
+# Exportar JSON
+parser.export_to_json('resultado.json')
 ```
 
-## Output Structure
+### API REST
 
-```json
-{
-  "personal_info": {
-    "NIT": ".",
-    "CPF": "..",
-    "Nome": "... .",
-    "Data_Nascimento": "../01/..",
-    "Nome_Mae": "..."
-  },
-  "employment_relationships": [
-    {
-      "sequence": 1,
-      "Data": {
-        "NIT": ".",
-        "Codigo_Empresa": ".",
-        "Origem_Vinculo": "...",
-        "Matricula_Trabalhador": "",
-        "Tipo_Filiado_Vinculo": "Empregado ou Agente Público",
-        "Inicio": "07/01/1985",
-        "Fim": "07/01/1986",
-        "Ultima_Remu": "01/1986",
-        "Indicadores": ""
-      },
-      "Remuneracoes": [
-        {
-          "Competencia": "01/1985",
-          "Remuneracao": 187999.60,
-          "Indicadores": ""
-        }
-      ],
-      "Metadata": {
-        "Nit_Match_Main_NIT": true,
-        "All_Competences_Complete": true,
-        "Data_Inicio": true,
-        "Data_Fim": true,
-        "Ultima_Remu": true,
-        "All_Date_Matches": true
-      }
-    }
-  ]
-}
+```bash
+# Iniciar servidor
+python3 api.py
+
+# Health check
+curl http://localhost:8000/health
+
+# Parse completo
+curl -X POST -F "file=@CNIS.pdf" http://localhost:8000/parse
+
+# Apenas resumo
+curl -X POST -F "file=@CNIS.pdf" http://localhost:8000/parse/summary
 ```
 
-## Metadata Fields
+## Dados Extraídos
 
-Each employment relationship includes validation metadata:
+### Dados Pessoais
+| Campo | Exemplo |
+|---|---|
+| NIT | 121.59960.98-7 |
+| CPF | 643.534.279-20 |
+| Nome | CELSO STIMER |
+| Data_Nascimento | 13/01/1967 |
+| Nome_Mae | DOLORES DE MORAES STIMER |
 
-- `Nit_Match_Main_NIT`: NIT matches personal info NIT
-- `All_Competences_Complete`: All expected months present
-- `Data_Inicio`: Start date exists
-- `Data_Fim`: End date exists
-- `Ultima_Remu`: Last remuneration date exists
-- `All_Date_Matches`: Competências exactly match employment period
+### Vínculos Empregatícios
+Cada vínculo contém:
 
-## Employment Types Supported
+- **Dados**: empresa, CNPJ, tipo de filiação, datas início/fim, indicadores
+- **Remunerações**: competência (MM/YYYY), valor, indicadores
+- **Metadata**: validação automática (NIT match, completude de datas)
 
-### 1. Regular Employment (Empregado ou Agente Público)
-Standard remunerations table with Competência, Remuneração, Indicadores
+### Tipos de Vínculo Suportados
+- Empregado ou Agente Público
+- Contribuinte Individual
+- Facultativo
+- Segurado Especial (Rural)
+- Benefícios (Auxílio-doença, Salário Maternidade, Aposentadoria, etc.)
 
-### 2. Contribuinte Individual
-Special table with columns:
-- Competência
-- Contrat./Cooperat.
-- Estabelecimento Tomador
-- Forma Prestação Serviço
-- Remuneração
+## Estrutura do Projeto
 
-### 3. Facultativo
-Contributions table with:
-- Competência
-- Data Pgto.
-- Contribuição
-- Salário Contribuição
-- Indicadores
+```
+cnis_importer/
+├── cnis_parser_final.py          # Parser principal
+├── api.py                        # API REST (Flask)
+├── requirements.txt              # Dependências completas
+├── requirements_simple.txt       # Dependências mínimas
+├── tramitacao/                   # Automação Tramitação Inteligente
+│   ├── automate_tramitacao.js    #   Playwright: upload CNIS + download PDFs
+│   └── extract_specs.py          #   Extrai specs dos PDFs de análise
+├── tests/                        # Testes de cobertura
+│   └── compare_with_specs.py     #   Compara parser vs specs do Tramitação
+├── sensitive-f2/                 # CNIS PDFs (não versionado - dados sensíveis)
+├── downloads/                    # PDFs gerados pelo Tramitação (não versionado)
+├── specs/                        # Specs JSON extraídos (não versionado)
+└── README.md
+```
 
-## Requirements
+## Validação com Tramitação Inteligente
+
+O parser foi validado contra o sistema [Tramitação Inteligente](https://planilha.tramitacaointeligente.com.br), referência no mercado previdenciário brasileiro.
+
+### Processo de validação
+
+1. **Upload**: 39 CNIS PDFs enviados ao Tramitação via automação Playwright
+2. **Extração**: PDFs de análise (contagem de tempo de contribuição) baixados
+3. **Specs**: Dados extraídos dos PDFs de análise como "gabarito"
+4. **Comparação**: Saída do nosso parser confrontada com os specs
+
+### Rodar os testes
+
+```bash
+source venv/bin/activate
+python tests/compare_with_specs.py
+```
+
+### Resultado atual
+
+```
+Testes: 39
+Média: 100.0%
+530 verificações (dados pessoais + datas de início/fim de todos os vínculos)
+```
+
+### Gerar novos specs (requer conta no Tramitação Inteligente)
+
+```bash
+# 1. Instalar Playwright
+npm install playwright
+npx playwright install chromium
+
+# 2. Colocar CNIS PDFs em sensitive-f2/
+
+# 3. Rodar automação (editar credenciais em automate_tramitacao.js)
+node tramitacao/automate_tramitacao.js
+
+# 4. Extrair specs dos PDFs baixados
+python tramitacao/extract_specs.py
+
+# 5. Rodar comparação
+python tests/compare_with_specs.py
+```
+
+## Requisitos
 
 - Python 3.7+
 - pdfplumber
 - python-dateutil
-
-See `requirements_simple.txt` for exact versions.
-
-## Project Structure
-
-```
-cnis_importer/
-├── cnis_parser_final.py       # Main parser
-├── requirements_simple.txt     # Dependencies
-├── CNIS1.pdf                   # Sample PDF (for testing)
-├── CHANGELOG.md                # Version history
-└── README.md                   # This file
-```
-
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for version history and recent changes.
-
-## Known Issues
-
-- PDF text extraction quality depends on the source PDF
-- Some very old CNIS formats may not be supported
-- Indicadores extraction may vary based on PDF structure
-
-## License
-
-This project is intended for parsing Brazilian INSS CNIS documents.
-
-## Support
-
-For issues or questions, check the CHANGELOG.md for recent fixes and updates.
+- Flask (opcional, para API REST)
+- Node.js + Playwright (opcional, para validação com Tramitação)

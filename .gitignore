@@ -5,8 +5,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-
-# Virtual environments
 env/
 ENV/
 .venv
@@ -22,17 +20,25 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Output files
+# Node (Playwright automation)
+node_modules/
+package.json
+package-lock.json
+
+# Sensitive data - CNIS PDFs contain personal information (CPF, name, etc.)
+sensitive/
+sensitive-f2/
+downloads/
+specs/
+screenshots/
+
+# PDF files (may contain sensitive data)
+*.pdf
+
+# Output/temp files
 *.json
 !requirements*.json
 *.xlsx
-*.png
-!debug_output/*.png
-
-# Sensitive data
-sensitive/
-
-# Temporary files
 *.tmp
 *.log
 debug_output/

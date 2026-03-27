@@ -31,6 +31,20 @@ class CNISParserFinal:
             self._extract_employment_relationships(full_text)
         
         for emp in self.employment_relationships:
+            # Derive missing Fim date from last remuneration if available
+            if not emp['Data'].get('Fim') and emp.get('Remuneracoes'):
+                last_remu = emp['Remuneracoes'][-1]
+                comp = last_remu.get('Competencia', '')
+                if re.match(r'\d{2}/\d{4}', comp):
+                    try:
+                        month, year = int(comp[:2]), int(comp[3:])
+                        if month == 12:
+                            last_day = datetime(year + 1, 1, 1) - relativedelta(days=1)
+                        else:
+                            last_day = datetime(year, month + 1, 1) - relativedelta(days=1)
+                        emp['Data']['Fim'] = last_day.strftime('%d/%m/%Y')
+                    except:
+                        pass
             emp['Metadata'] = self._calculate_metadata(emp)
             
         return {
@@ -85,11 +99,11 @@ class CNISParserFinal:
             else:
                 i += 1
     
-    def _parse_employment_header(self, seq: int, nit: str, rest_of_line: str, 
+    def _parse_employment_header(self, seq: int, nit: str, rest_of_line: str,
                                   lines: List[str], line_idx: int) -> Optional[Dict]:
         try:
             parts = rest_of_line.split()
-            
+
             codigo_emp = ""
             origem_vinculo = []
             matricula = ""
@@ -98,33 +112,61 @@ class CNISParserFinal:
             data_fim = None
             ultima_remu = None
             indicadores = ""
-            
+
+            # First part is usually the CNPJ/CEI code
             if parts and re.match(r'[\d\./\-]+', parts[0]):
                 codigo_emp = parts[0]
                 parts = parts[1:]
-            
+
+            # Known employment type keywords
+            TIPO_KEYWORDS = ['Empregado', 'Contribuinte', 'Facultativo', 'Segurado']
+
+            tipo_found_at = None
             for idx, part in enumerate(parts):
-                if re.match(r'\d{2}/\d{2}/\d{4}', part):
-                    if not data_inicio:
-                        data_inicio = part
-                    elif not data_fim:
-                        data_fim = part
-                elif re.match(r'\d{2}/\d{4}', part):
-                    ultima_remu = part
-                elif part in ['Empregado', 'Contribuinte', 'Facultativo'] or 'Agente' in part:
-                    tipo_filiado_parts = [part]
-                    for j in range(idx + 1, len(parts)):
-                        if not re.match(r'\d{2}/\d{2}/\d{4}', parts[j]) and not re.match(r'\d{2}/\d{4}', parts[j]):
-                            tipo_filiado_parts.append(parts[j])
-                        else:
-                            break
-                    tipo_filiado = ' '.join(tipo_filiado_parts)
+                if part in TIPO_KEYWORDS or 'Agente' in part or 'Benefício' in part:
+                    tipo_found_at = idx
                     break
-                else:
-                    origem_vinculo.append(part)
-            
+
+            if tipo_found_at is not None:
+                # Everything before the type keyword is the company name
+                origem_vinculo = parts[:tipo_found_at]
+
+                # Collect type words (stop at dates)
+                tipo_parts = []
+                remaining_parts = parts[tipo_found_at:]
+                for part in remaining_parts:
+                    if re.match(r'\d{2}/\d{2}/\d{4}', part):
+                        if not data_inicio:
+                            data_inicio = part
+                        elif not data_fim:
+                            data_fim = part
+                    elif re.match(r'\d{2}/\d{4}$', part):
+                        ultima_remu = part
+                    elif not data_inicio:
+                        # Still collecting type before any date appears
+                        tipo_parts.append(part)
+                    elif part.startswith(('IREM', 'IREC', 'PREC', 'PREM', 'ASE', 'AVRC', 'IVIN', 'PSC')):
+                        indicadores = part if not indicadores else indicadores + ' ' + part
+
+                tipo_filiado = ' '.join(tipo_parts)
+            else:
+                # No type keyword found - everything before dates is the name
+                for idx, part in enumerate(parts):
+                    if re.match(r'\d{2}/\d{2}/\d{4}', part):
+                        if not data_inicio:
+                            data_inicio = part
+                        elif not data_fim:
+                            data_fim = part
+                    elif re.match(r'\d{2}/\d{4}$', part):
+                        ultima_remu = part
+                    elif not data_inicio:
+                        origem_vinculo.append(part)
+                    elif part.startswith(('IREM', 'IREC', 'PREC', 'PREM', 'ASE', 'AVRC', 'IVIN', 'PSC')):
+                        indicadores = part if not indicadores else indicadores + ' ' + part
+
             origem_str = ' '.join(origem_vinculo)
-            
+
+            # Extract matrícula from company name if present
             if re.search(r'\d{10,}', origem_str):
                 clean_name = []
                 matricula_parts = []
@@ -135,29 +177,79 @@ class CNISParserFinal:
                         matricula_parts.append(word)
                     else:
                         clean_name.append(word)
-                
+
                 origem_str = ' '.join(clean_name)
                 if matricula_parts:
                     matricula = ' '.join(matricula_parts)
-            
+
+            # Handle next line: may contain "Público", "S.A.", "FALIDO", company name continuation, or Indicadores
             next_line_idx = line_idx + 1
             if next_line_idx < len(lines):
-                next_line = lines[next_line_idx]
-                
-                if next_line and not next_line.startswith('Seq.') and not next_line.startswith('Remunerações'):
-                    if 'FAZENDA' in next_line or 'COOPERATIVAS' in next_line or not re.match(r'^\d', next_line):
-                        origem_str += ' ' + next_line.strip()
-                
-                if 'Indicadores:' in next_line:
-                    ind_match = re.search(r'Indicadores:\s*(.+)', next_line)
-                    if ind_match:
-                        indicadores = ind_match.group(1).strip()
-                
-                if next_line_idx + 1 < len(lines) and 'Indicadores:' in lines[next_line_idx + 1]:
-                    ind_match = re.search(r'Indicadores:\s*(.+)', lines[next_line_idx + 1])
-                    if ind_match:
-                        indicadores = ind_match.group(1).strip()
-            
+                next_line = lines[next_line_idx].strip()
+
+                if next_line:
+                    # "Público" is continuation of "Empregado ou Agente" type
+                    # It may appear as "Público" alone, or "S.A. Público", "LTDA Público", etc.
+                    if 'Público' in next_line and ('Empregado' in tipo_filiado or 'Agente' in tipo_filiado):
+                        tipo_filiado = tipo_filiado + ' Público'
+                        # Everything before "Público" is company name continuation
+                        before_publico = next_line.split('Público')[0].strip()
+                        if before_publico and before_publico not in ('', 'ou'):
+                            origem_str += ' ' + before_publico
+                    elif next_line == 'Público':
+                        tipo_filiado = tipo_filiado + ' Público' if tipo_filiado else 'Público'
+                    elif next_line.startswith('Especial') and 'Segurado' in tipo_filiado:
+                        tipo_filiado = tipo_filiado + ' Especial'
+                    elif next_line.startswith('Individual') and 'Contribuinte' in tipo_filiado:
+                        tipo_filiado = tipo_filiado + ' Individual'
+                    elif next_line.startswith('Matrícula'):
+                        pass  # Skip matrícula header line
+                    elif next_line.startswith('Indicadores:'):
+                        ind_match = re.search(r'Indicadores:\s*(.+)', next_line)
+                        if ind_match:
+                            indicadores = ind_match.group(1).strip()
+                    elif not next_line.startswith('Seq.') and not next_line.startswith('Remunerações') \
+                         and not next_line.startswith('Competência') \
+                         and not re.match(r'^\d+\s+\d{3}\.\d{5}', next_line) \
+                         and not next_line.startswith('O INSS') \
+                         and not next_line.startswith('Página'):
+                        # Company name continuation (e.g. "S.A.", "FALIDO", "LTDA")
+                        origem_str += ' ' + next_line
+
+                # Check line after next for Indicadores
+                if next_line_idx + 1 < len(lines):
+                    next_next = lines[next_line_idx + 1].strip()
+                    if next_next.startswith('Indicadores:') and not indicadores:
+                        ind_match = re.search(r'Indicadores:\s*(.+)', next_next)
+                        if ind_match:
+                            indicadores = ind_match.group(1).strip()
+
+            # Clean trailing stray numbers from company name (matrícula fragments like "LTDA 1", "LTDA 235")
+            mat_match = re.search(r'\s+(\d{1,4})$', origem_str.strip())
+            if mat_match and not matricula:
+                matricula = mat_match.group(1)
+            origem_str = re.sub(r'\s+\d{1,4}$', '', origem_str.strip())
+            # Remove duplicate company name (e.g. "EMPRESÁRIO / EMPREGADOR EMPRESÁRIO / EMPREGADOR")
+            if len(origem_str) > 20:
+                half = len(origem_str) // 2
+                first_half = origem_str[:half].strip()
+                second_half = origem_str[half:].strip()
+                if first_half and second_half.startswith(first_half[:min(15, len(first_half))]):
+                    origem_str = first_half
+
+            # If no Fim date but we have Ultima_Remu (MM/YYYY), derive Fim as last day of that month
+            if not data_fim and ultima_remu and re.match(r'\d{2}/\d{4}', ultima_remu):
+                try:
+                    month, year = int(ultima_remu[:2]), int(ultima_remu[3:])
+                    # Last day of the month
+                    if month == 12:
+                        last_day = datetime(year + 1, 1, 1) - relativedelta(days=1)
+                    else:
+                        last_day = datetime(year, month + 1, 1) - relativedelta(days=1)
+                    data_fim = last_day.strftime('%d/%m/%Y')
+                except:
+                    pass
+
             return {
                 'sequence': seq,
                 'Data': {
@@ -173,7 +265,7 @@ class CNISParserFinal:
                 },
                 'Remuneracoes': []
             }
-            
+
         except Exception as e:
             if self.debug:
                 print(f"[ERROR] Failed to parse employment header: {e}")
