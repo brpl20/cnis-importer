@@ -35,9 +35,13 @@ screenshots/
 # PDF files (may contain sensitive data)
 *.pdf
 
+# Bruno - production environment (contains API keys)
+collection/**/environments/Production.bru
+
 # Output/temp files
 *.json
 !requirements*.json
+!collection/**/bruno.json
 *.xlsx
 *.tmp
 *.log

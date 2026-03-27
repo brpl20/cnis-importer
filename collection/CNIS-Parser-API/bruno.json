@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "CNIS Parser API",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

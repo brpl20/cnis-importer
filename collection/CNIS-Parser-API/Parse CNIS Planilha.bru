@@ -1,0 +1,57 @@
+meta {
+  name: Parse CNIS Planilha
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/api/v1/parse/planilha
+  body: multipartForm
+  auth: apikey
+}
+
+auth:apikey {
+  key: X-API-Key
+  value: {{api_key}}
+  placement: header
+}
+
+body:multipart-form {
+  file: @file(/path/to/cnis.pdf)
+}
+
+docs {
+  # Parse CNIS Planilha
+
+  Faz o parsing do PDF CNIS e retorna no formato
+  ProcStudio Planilha (spreadsheet_data JSON schema).
+
+  Usado para importar dados CNIS diretamente na planilha de calculo.
+
+  ## Response
+
+  ```json
+  {
+    "success": true,
+    "data": {
+      "segurado": { "cpf", "nome", "sexo", "dataDeNascimento", "customerUuid" },
+      "tabs": [{
+        "uid": "tab-1",
+        "label": "CNIS Import",
+        "sistema": "rgps",
+        "periodos": [{
+          "uid", "seq", "name", "inicio", "fim",
+          "ativo", "atividadeTipo", "especial",
+          "contaParaCarencia",
+          "meta": { "tipoVinculo", "codigoEmpresa", "indicadores", "totalRemuneracoes" }
+        }]
+      }],
+      "activeTabUid": "tab-1"
+    }
+  }
+  ```
+}
+
+settings {
+  encodeUrl: true
+}

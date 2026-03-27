@@ -1,0 +1,13 @@
+meta {
+  name: CNIS Parser API
+}
+
+auth {
+  mode: apikey
+}
+
+auth:apikey {
+  key: X-API-Key
+  value: {{api_key}}
+  placement: header
+}
