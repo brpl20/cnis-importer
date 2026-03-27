@@ -7,10 +7,10 @@
 set -euo pipefail
 
 APP_NAME="cnis_parser"
-APP_DIR="/opt/cnis_parser"
+APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 VENV_DIR="${APP_DIR}/venv"
-APP_USER="cnis"
-APP_GROUP="cnis"
+APP_USER="brpl"
+APP_GROUP="brpl"
 
 GREEN='\033[0;32m'
 NC='\033[0m'

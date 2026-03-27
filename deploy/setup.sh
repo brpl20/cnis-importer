@@ -4,17 +4,16 @@
 # Run as root (or with sudo) on the Hostinger VPS
 #
 # Usage:
-#   git clone <repo> /opt/cnis_parser   (or git pull if already there)
-#   cd /opt/cnis_parser
+#   cd /home/brpl/code/cnis-importer
 #   sudo bash deploy/setup.sh
 # =============================================================================
 set -euo pipefail
 
 # ── Config ───────────────────────────────────────────────────────────────────
 APP_NAME="cnis_parser"
-APP_DIR="/opt/cnis_parser"
-APP_USER="cnis"
-APP_GROUP="cnis"
+APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+APP_USER="brpl"
+APP_GROUP="brpl"
 VENV_DIR="${APP_DIR}/venv"
 ENV_FILE="${APP_DIR}/.env"
 SERVICE_FILE="/etc/systemd/system/${APP_NAME}.service"
@@ -59,22 +58,12 @@ info "Nginx found"
 [[ -f "${NGINX_CONF}" ]] || error "Nginx config not found at ${NGINX_CONF}"
 info "Nginx config found at ${NGINX_CONF}"
 
-# ── Step 1: Create system user ──────────────────────────────────────────────
+# ── Step 1: Verify user and directory permissions ────────────────────────────
 echo ""
-info "Step 1: System user"
-
-if id "${APP_USER}" &>/dev/null; then
-    info "User '${APP_USER}' already exists"
-else
-    useradd --system --no-create-home --shell /usr/sbin/nologin "${APP_USER}"
-    info "Created system user '${APP_USER}'"
-fi
-
-# ── Step 2: Set directory ownership ─────────────────────────────────────────
-info "Step 2: Directory permissions"
+info "Step 1: Directory permissions"
 
 chown -R "${APP_USER}:${APP_GROUP}" "${APP_DIR}"
-info "Ownership set to ${APP_USER}:${APP_GROUP}"
+info "Ownership set to ${APP_USER}:${APP_GROUP} on ${APP_DIR}"
 
 # ── Step 3: Python virtualenv ───────────────────────────────────────────────
 echo ""
@@ -147,9 +136,6 @@ SyslogIdentifier=${APP_NAME}
 
 # Security hardening
 NoNewPrivileges=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=${APP_DIR}
 PrivateTmp=true
 
 [Install]
